@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MATHQUIZ - LÊ THỊ NHƯ QUỲNH</title>
+    <script>
+        window.MathJax = { tex: { inlineMath: [['$', '$']], displayMath: [['$$', '$$']] } };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body oncontextmenu="return false;">
+    <script>
+        // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+        document.onkeydown = function (e) {
+            if (e.keyCode == 123) return false;
+            if (e.ctrlKey && e.shiftKey && (e.keyCode == 'I'.charCodeAt(0) || e.keyCode == 'J'.charCodeAt(0))) return false;
+            if (e.ctrlKey && e.keyCode == 'U'.charCodeAt(0)) return false;
+        }
+    </script>
+
+    <div id="nameModal">
+        <div class="name-box">
+            <h2 style="color:var(--gold); margin-top:0;">CHÀO MỪNG CÁC EM</h2>
+            <p>Vui lòng nhập thông tin để bắt đầu bài kiểm tra:</p>
+            <input type="text" id="studentName" class="name-input" placeholder="Họ và Tên (Ví dụ: Nguyễn Văn A)">
+            <br>
+            <select id="studentGrade" class="name-input" style="cursor: pointer;" onchange="updateExamOptions()">
+                <option value="">-- Chọn Khối --</option>
+                <option value="10">Khối 10</option>
+                <option value="11">Khối 11</option>
+                <option value="12">Khối 12</option>
+            </select>
+            <br>
+            <select id="examName" class="name-input" style="cursor: pointer; display: none;">
+                <option value="">-- Chọn Bài Kiểm Tra --</option>
+            </select>
+            <br id="exam-break" style="display: none;">
+            <input type="text" id="studentID" class="name-input" placeholder="Số báo danh (6 chữ số, VD: 120115)"
+                maxlength="6" pattern="[0-9]{6}">
+            <br>
+            <button id="start-btn" class="btn"
+                style="text-align:center; width:100%; background:var(--accent); color:white; font-weight:bold;"
+                onclick="startGame()">BẮT ĐẦU NGAY</button>
+        </div>
+    </div>
+
+    <header>
+        <h1 id="exam-title" style="margin:5px 0; color:var(--gold);">HỆ THỐNG KIỂM TRA TOÁN HỌC</h1>
+        <p style="margin:5px 0; font-weight:bold;">Lê Thị Như Quỳnh</p>
+    </header>
+
+    <div class="game-container">
+        <div class="quiz-card">
+            <span id="round-title" class="round-indicator">VÒNG 1</span>
+            <div id="q-area">
+                <div id="q-text" class="question-text"></div>
+                <div id="ans-zone" class="options-grid"></div>
+            </div>
+            <button id="next-btn" class="next-btn" onclick="handleNext()">TIẾP THEO ➜</button>
+        </div>
+
+        <div class="sidebar">
+            <div class="image-box">
+                <img src="hinh_game.jpg" style="width:100%; height:100%; object-fit:cover;"
+                    onerror="this.src='https://via.placeholder.com/350x260?text=Oxyz+Challenge'">
+                <div id="grid" class="grid-overlay"></div>
+            </div>
+            <div class="status">
+                <div style="font-size: 1.6rem; color: var(--gold); font-weight: bold;">ĐIỂM: <span
+                        id="score">0.00</span></div>
+                <div id="student-display"
+                    style="color:var(--accent); font-weight:bold; margin: 10px 0; font-size: 0.9rem;">Học sinh: ...
+                </div>
+                <div id="timer-display" style="color: #ff6b6b; font-weight: bold; font-size: 1.2rem; margin: 10px 0;">
+                    Thời gian: 90:00</div>
+                <div style="color: #8b949e; border-top: 1px solid #30363d; padding-top: 10px;">Tiến trình: <span
+                        id="q-num">1</span> / 22</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_SCRIPT_POST_URL = "https://script.google.com/macros/s/AKfycbyk1ZvWsGhYgMqLVI-8Q9EK5jLedNBut4KdQ2DKrv0WMjw-mjkAsFfnF-1lBcvfBoul/exec";
+
+        // Exam configuration mapping
+        const EXAM_CONFIG = {
+            "11": {
+                "Kiểm tra mũ logarit": {
+                    url: "https://script.google.com/macros/s/AKfycbx6TCHJP9pAR_d4wxvNEZgedqhfRgkZllTuvRpU-Sj-tb8hQyiwXTuN29vaTCc2Ql0/exec",
+                    title: "GIẢI MÃ CHUYÊN ĐỀ MŨ VÀ LOGARIT"
+                },
+                "Kiểm tra đạo hàm": {
+                    url: "URL_DAO_HAM_KHOI_11", // TODO: Cần URL thực tế
+                    title: "GIẢI MÃ CHUYÊN ĐỀ ĐẠO HÀM"
+                }
+            },
+            "12": {
+                "Kiểm tra nguyên hàm tích phân": {
+                    url: "https://script.google.com/macros/s/AKfycbyb-uHqTnGkQXA_YadHlG-fCr3lKVevaR3LkNWVzyRwJ3-3OaXOGHA2E7SsrmT1Hsx1/exec",
+                    title: "GIẢI MÃ CHUYÊN ĐỀ NGUYÊN HÀM TÍCH PHÂN"
+                },
+                "Kiểm tra hình học Oxyz": {
+                    url: "URL_OXYZ_KHOI_12", // TODO: Cần URL thực tế
+                    title: "GIẢI MÃ CHUYÊN ĐỀ HÌNH HỌC OXYZ"
+                }
+            }
+        };
+
+        // CORE SYSTEM LOGIC (DO NOT MODIFY)
+        // Auth removed
+
+
+        let studentName = "", studentGrade = "", studentID = "", examName = "";
+        let currentIdx = 0, score = 0, userAns = "", v2Ans = [];
+        let startTime;
+        let timerInterval = null;
+        let timeRemaining = 90 * 60; // 90 minutes in seconds
+
+        const questions = [];
+
+        async function loadQuestions(gradeLevel, selectedExam) {
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.disabled = true;
+                startBtn.innerText = "ĐANG TẢI DỮ LIỆU...";
+                startBtn.style.opacity = "0.5";
+            }
+            try {
+                // Get the URL from exam configuration
+                if (!EXAM_CONFIG[gradeLevel] || !EXAM_CONFIG[gradeLevel][selectedExam]) {
+                    throw new Error("Không tìm thấy cấu hình bài kiểm tra!");
+                }
+
+                const examUrl = EXAM_CONFIG[gradeLevel][selectedExam].url;
+
+                if (examUrl.startsWith("URL_")) {
+                    throw new Error("Bài kiểm tra này chưa được cấu hình. Vui lòng liên hệ giáo viên!");
+                }
+
+                // Fetch from Proxy (Public Access)
+                const res = await fetch(examUrl);
+                if (!res.ok) throw new Error("Không thể kết nối đến máy chủ!");
+
+                const data = await res.json();
+
+                if (data.error) throw new Error(data.error);
+
+                // The server now returns the EXACT exam structure (12 v1, 4 v2, 6 v3)
+                // randomly selected and ordered. We just use it directly.
+                questions.length = 0;
+                data.forEach(q => questions.push(q));
+
+                console.log(`Exam loaded from server: ${questions.length} questions`);
+
+                if (startBtn) {
+                    startBtn.disabled = false;
+                    startBtn.innerText = "BẮT ĐẦU NGAY";
+                    startBtn.style.opacity = "1";
+                }
+
+            } catch (error) {
+                console.error(error);
+                alert("Lỗi tải câu hỏi: " + error.message);
+                if (startBtn) startBtn.innerText = "LỖI KẾT NỐI";
+            }
+        }
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Update exam options based on selected grade
+        function updateExamOptions() {
+            const grade = document.getElementById('studentGrade').value;
+            const examSelect = document.getElementById('examName');
+            const examBreak = document.getElementById('exam-break');
+
+            // Clear existing options
+            examSelect.innerHTML = '<option value="">-- Chọn Bài Kiểm Tra --</option>';
+
+            if (grade === "11" || grade === "12") {
+                // Show exam selection
+                examSelect.style.display = 'block';
+                examBreak.style.display = 'block';
+
+                // Add exam options based on grade
+                const exams = EXAM_CONFIG[grade];
+                for (const examName in exams) {
+                    const option = document.createElement('option');
+                    option.value = examName;
+                    option.textContent = examName.charAt(0).toUpperCase() + examName.slice(1);
+                    examSelect.appendChild(option);
+                }
+            } else {
+                // Hide exam selection for other grades
+                examSelect.style.display = 'none';
+                examBreak.style.display = 'none';
+            }
+        }
+
+        // Don't auto-load questions on page load anymore
+        // Questions will be loaded when user selects grade and clicks start
+
+        async function startGame() {
+            const name = document.getElementById('studentName').value;
+            const grade = document.getElementById('studentGrade').value;
+            const exam = document.getElementById('examName').value;
+            const id = document.getElementById('studentID').value;
+
+            if (name.trim() === "") { alert("Vui lòng nhập họ tên!"); return; }
+            if (grade === "") { alert("Vui lòng chọn khối!"); return; }
+            if (grade !== "11" && grade !== "12") { alert("Hiện tại chỉ hỗ trợ khối 11 và 12!"); return; }
+            if (exam === "") { alert("Vui lòng chọn bài kiểm tra!"); return; }
+            if (id.trim() === "") { alert("Vui lòng nhập số báo danh!"); return; }
+            if (!/^[0-9]{6}$/.test(id)) { alert("Số báo danh phải có đúng 6 chữ số!"); return; }
+
+            studentName = name;
+            studentGrade = grade;
+            studentID = id;
+            examName = exam;
+
+            // Load questions based on selected grade and exam
+            await loadQuestions(grade, exam);
+
+            if (questions.length === 0) {
+                alert("Không thể tải câu hỏi. Vui lòng thử lại!");
+                return;
+            }
+
+            // Update exam title based on selected exam
+            const examTitle = document.getElementById('exam-title');
+            examTitle.innerText = EXAM_CONFIG[grade][exam].title;
+
+            document.getElementById('nameModal').style.display = 'none';
+            document.getElementById('student-display').innerText = `Học sinh: ${studentName} - Khối: ${studentGrade} - SBD: ${studentID}`;
+            startTime = new Date();
+            timeRemaining = 90 * 60; // Reset to 90 minutes
+            startTimer();
+            resetGame();
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+
+            timerInterval = setInterval(() => {
+                timeRemaining--;
+
+                const minutes = Math.floor(timeRemaining / 60);
+                const seconds = timeRemaining % 60;
+                const timerDisplay = document.getElementById('timer-display');
+
+                if (timerDisplay) {
+                    timerDisplay.innerText = `Thời gian: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                    // Change color when time is running out
+                    if (timeRemaining <= 300) { // Last 5 minutes
+                        timerDisplay.style.color = '#ff0000';
+                        timerDisplay.style.animation = 'pulse 1s infinite';
+                    } else if (timeRemaining <= 600) { // Last 10 minutes
+                        timerDisplay.style.color = '#ff6b6b';
+                    }
+                }
+
+                if (timeRemaining <= 0) {
+                    clearInterval(timerInterval);
+                    alert("Hết thời gian làm bài!");
+                    finish();
+                }
+            }, 1000);
+        }
+
+        function resetGame() {
+            currentIdx = 0; score = 0;
+            document.getElementById('score').innerText = "0.00";
+            const grid = document.getElementById('grid'); grid.innerHTML = "";
+            for (let i = 0; i < 24; i++) {
+                let t = document.createElement('div'); t.className = 'tile'; t.id = 'tile-' + i; grid.appendChild(t);
+            }
+            render();
+        }
+
+        function processContent(text, isAnswer = false) {
+            if (!text) return isAnswer ? "" : "Trống";
+            let content = String(text);
+
+            const driveRegex = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)[^\s"']*/gi;
+            content = content.replace(driveRegex, "https://lh3.googleusercontent.com/d/$1");
+
+            const imgUrlRegex = /(https?:\/\/.*?\.(?:png|jpg|jpeg|gif|webp|svg|bmp)(?:\?.*?)?|https:\/\/lh3\.googleusercontent\.com\/d\/[a-zA-Z0-9_-]+)/gi;
+
+            const imgStyle = isAnswer
+                ? "max-width:100%; max-height:150px; border-radius:8px; margin:5px 0; display:block;"
+                : "max-width:100%; border-radius:12px; margin:10px 0; box-shadow:0 8px 24px rgba(0,0,0,0.5); border: 1px solid #30363d;";
+
+            content = content.replace(imgUrlRegex, (match) => {
+                return `<div style="text-align:center; width:100%;"><img src="${match}" referrerpolicy="no-referrer" style="${imgStyle}" onerror="console.error('IMAGE LOAD FAILED:', this.src);"></div>`;
+            });
+
+            return content;
+        }
+
+        function render() {
+            try {
+                if (!questions || questions.length === 0) {
+                    alert("Không có câu hỏi nào để hiển thị!");
+                    return;
+                }
+                const q = questions[currentIdx];
+                if (!q) {
+                    alert(`Lỗi: Không tìm thấy câu hỏi số ${currentIdx + 1}`);
+                    return;
+                }
+
+                const processedQuestion = processContent(q.q);
+
+                let localIdx = 0;
+                for (let i = 0; i <= currentIdx; i++) {
+                    if (questions[i].type === q.type) {
+                        localIdx++;
+                    }
+                }
+
+                document.getElementById('q-num').innerText = currentIdx + 1;
+                document.getElementById('q-text').innerHTML = `<span class="q-label" style="color:var(--gold); font-weight:bold;">Câu ${localIdx}:</span> ` + processedQuestion;
+                const zone = document.getElementById('ans-zone'), nextBtn = document.getElementById('next-btn');
+                zone.innerHTML = ''; nextBtn.style.display = 'none';
+
+                if (q.type === 'v1') {
+                    document.getElementById('round-title').innerText = "Vòng 1: Trắc nghiệm (0.25đ/câu)";
+                    if (!q.a || !Array.isArray(q.a)) throw new Error("Dữ liệu đáp án (a) bị thiếu hoặc sai định dạng");
+
+                    q.a.forEach((opt, i) => {
+                        let b = document.createElement('button'); b.className = 'btn';
+                        const processedOpt = processContent(opt, true);
+                        b.innerHTML = `<b>${String.fromCharCode(65 + i)}.</b> ${processedOpt}`;
+
+                        b.style.display = "block";
+                        b.style.textAlign = "left";
+
+                        b.onclick = () => {
+                            if (i === q.c) {
+                                score += 0.25;
+                                openTile();
+                            }
+                            // Highlight selected answer in sky blue
+                            b.style.backgroundColor = '#87CEEB';
+                            b.style.color = '#000';
+                            zone.querySelectorAll('.btn').forEach(btn => btn.disabled = true);
+                            nextBtn.style.display = 'block'; updateScore();
+                        };
+                        zone.appendChild(b);
+                    });
+                } else if (q.type === 'v2') {
+                    document.getElementById('round-title').innerText = "Vòng 2: Đúng/Sai (Tối đa 1.0đ/câu)";
+                    if (!q.items || !Array.isArray(q.items)) throw new Error("Dữ liệu ý đúng sai (items) bị thiếu");
+
+                    v2Ans = new Array(4).fill(null);
+                    q.items.forEach((item, i) => {
+                        let div = document.createElement('div'); div.className = 'tf-row';
+                        const processedLabel = processContent(item.l, true);
+                        div.innerHTML = `<div style="flex:1; padding-right:10px;"><b>${String.fromCharCode(97 + i)}.</b> ${processedLabel}</div><div style="display:flex; gap:8px;">
+                    <button class="btn-tf" id="t-${i}" onclick="setV2(${i},true)">Đúng</button>
+                    <button class="btn-tf" id="f-${i}" onclick="setV2(${i},false)">Sai</button>
+                </div>`;
+                        zone.appendChild(div);
+                    });
+                    nextBtn.style.display = 'block'; nextBtn.innerText = "XÁC NHẬN CÂU NÀY";
+                } else {
+                    document.getElementById('round-title').innerText = "Vòng 3: Trả lời ngắn (0.5đ/câu)";
+                    userAns = "";
+                    zone.innerHTML = `<div class="short-answer-zone"><div class="answer-display" id="disp">- - -</div>
+                <div class="numpad">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 0, '.', '-'].map(n => `<button class="num-btn" onclick="press('${n}')">${n}</button>`).join('')}
+                <button class="num-btn" style="grid-column:span 3; background:var(--wrong); border:none;" onclick="press('C')">XÓA TẤT CẢ</button></div></div>`;
+                    nextBtn.style.display = 'block'; nextBtn.innerText = "GỬI ĐÁP ÁN";
+                }
+                MathJax.typesetPromise();
+            } catch (err) {
+                console.error("Render Error:", err);
+                alert("Lỗi hiển thị: " + err.message);
+            }
+        }
+
+        function setV2(i, v) {
+            v2Ans[i] = v;
+            document.getElementById(`t-${i}`).className = v ? 'btn-tf active-t' : 'btn-tf';
+            document.getElementById(`f-${i}`).className = !v ? 'btn-tf active-f' : 'btn-tf';
+        }
+
+        function press(v) {
+            if (v === 'C') userAns = ""; else if (userAns.length < 6) userAns += v;
+            document.getElementById('disp').innerText = userAns || "- - -";
+        }
+
+        function openTile() {
+            const tiles = document.querySelectorAll('.tile:not(.open)');
+            if (tiles.length) tiles[Math.floor(Math.random() * tiles.length)].classList.add('open');
+        }
+
+        function updateScore() { document.getElementById('score').innerText = score.toFixed(2); }
+
+        function handleNext() {
+            if (currentIdx >= questions.length) return;
+            const q = questions[currentIdx];
+
+            if (q.type === 'v2') {
+                let correctCount = 0;
+                q.items.forEach((item, i) => { if (v2Ans[i] === item.r) correctCount++; });
+                const pointsMap = [0, 0.1, 0.25, 0.5, 1.0];
+                score += pointsMap[correctCount];
+                if (correctCount === 4) openTile();
+            } else if (q.type === 'v3') {
+                if (userAns == q.c) { score += 0.5; openTile(); }
+            }
+            updateScore();
+            currentIdx++;
+
+            if (currentIdx < questions.length) {
+                render();
+            } else {
+                finish();
+            }
+        }
+
+        function finish() {
+            try {
+                // Stop the timer
+                if (timerInterval) {
+                    clearInterval(timerInterval);
+                    timerInterval = null;
+                }
+                document.getElementById('next-btn').style.display = 'none'; // Prevent double clicking
+                let comment = "";
+                const s = score;
+                if (s <= 3.5) comment = "Bạn cần cố gắng nhiều.";
+                else if (s <= 5) comment = "Bạn cần cố gắng.";
+                else if (s <= 6.5) comment = "Bạn ở mức tầm trung.";
+                else if (s < 8) comment = "Bạn khá.";
+                else if (s <= 9) comment = "Bạn giỏi.";
+                else if (s <= 9.8) comment = "Bạn xuất sắc.";
+                else comment = "Đỉnh của chóp...";
+
+                // Calculate duration
+                const endTime = new Date();
+                const durationMs = startTime ? (endTime - startTime) : 0;
+                const minutes = Math.floor(durationMs / 60000);
+                const seconds = Math.floor((durationMs % 60000) / 1000);
+                const timeString = `${minutes} phút ${seconds} giây`;
+
+                document.getElementById('round-title').innerText = "KẾT THÚC BÀI THI";
+                document.getElementById('q-area').innerHTML = `<div style="text-align:center;">
+                <div class="result-text" id="result-comment">${comment}</div>
+                <h3>Tổng điểm tích lũy: ${score.toFixed(2)} / 10.0</h3>
+                <p>Thời gian làm bài: <b>${timeString}</b></p>
+                <p id="upload-status" class="loading-dots">Đang lưu kết quả lên hệ thống</p>
+                <button class="btn" style="width:100%; text-align:center; margin-top:20px;" onclick="location.reload()">LÀM LẠI BÀI KHÁC</button>
+            </div>`;
+                document.querySelectorAll('.tile').forEach(t => t.classList.add('open'));
+
+                sendToSheet(studentName, score.toFixed(2), timeString);
+            } catch (e) {
+                console.error("Error in finish():", e);
+                alert("Lỗi khi kết thúc bài thi: " + e.message);
+            }
+        }
+
+        function sendToSheet(name, finalScore, time) {
+            // Use URLSearchParams for reliable x-www-form-urlencoded transmission
+            const formData = new URLSearchParams();
+            formData.append('name', name);
+            formData.append('grade', studentGrade);
+            formData.append('studentID', studentID);
+            formData.append('examName', examName);
+            formData.append('score', finalScore);
+            formData.append('time', time);
+
+            fetch(GOOGLE_SCRIPT_POST_URL, {
+                method: "POST",
+                mode: "no-cors",
+                cache: "no-cache",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData.toString()
+            }).then(() => {
+                console.log("Data sent to server (opaque response)");
+                const statusEl = document.getElementById('upload-status');
+                if (statusEl) {
+                    statusEl.innerText = "✅ Đã lưu điểm thành công vào hệ thống!";
+                    statusEl.classList.remove('loading-dots');
+                }
+            }).catch(err => {
+                console.error("Fetch error:", err);
+                const statusEl = document.getElementById('upload-status');
+                if (statusEl) statusEl.innerText = "❌ Lỗi kết nối, hãy chụp màn hình điểm lại nhé.";
+            });
+        }
+    </script>
+</body>
+
+</html>
