@@ -123,7 +123,7 @@
 
 
         let studentName = "", studentGrade = "", studentID = "", examName = "";
-        let currentIdx = 0, score = 0, userAns = "", v2Ans = [];
+        let currentIdx = 0, score = 0, userAns = "", v2Ans = [], v1Selection = null;
         let startTime;
         let timerInterval = null;
         let timeRemaining = 90 * 60; // 90 minutes in seconds
@@ -285,7 +285,7 @@
         }
 
         function resetGame() {
-            currentIdx = 0; score = 0;
+            currentIdx = 0; score = 0; v1Selection = null;
             document.getElementById('score').innerText = "0.00";
             const grid = document.getElementById('grid'); grid.innerHTML = "";
             for (let i = 0; i < 24; i++) {
@@ -344,8 +344,10 @@
                     document.getElementById('round-title').innerText = "Vòng 1: Trắc nghiệm (0.25đ/câu)";
                     if (!q.a || !Array.isArray(q.a)) throw new Error("Dữ liệu đáp án (a) bị thiếu hoặc sai định dạng");
 
+                    v1Selection = null;
                     q.a.forEach((opt, i) => {
                         let b = document.createElement('button'); b.className = 'btn';
+                        b.id = `v1-opt-${i}`;
                         const processedOpt = processContent(opt, true);
                         b.innerHTML = `<b>${String.fromCharCode(65 + i)}.</b> ${processedOpt}`;
 
@@ -353,15 +355,18 @@
                         b.style.textAlign = "left";
 
                         b.onclick = () => {
-                            if (i === q.c) {
-                                score += 0.25;
-                                openTile();
-                            }
-                            // Highlight selected answer in sky blue
+                            // Reset all buttons in this zone
+                            zone.querySelectorAll('.btn').forEach(btn => {
+                                btn.style.backgroundColor = '';
+                                btn.style.color = '';
+                            });
+
+                            // Highlight selected answer
                             b.style.backgroundColor = '#87CEEB';
                             b.style.color = '#000';
-                            zone.querySelectorAll('.btn').forEach(btn => btn.disabled = true);
-                            nextBtn.style.display = 'block'; updateScore();
+
+                            v1Selection = i;
+                            nextBtn.style.display = 'block';
                         };
                         zone.appendChild(b);
                     });
@@ -417,7 +422,12 @@
             if (currentIdx >= questions.length) return;
             const q = questions[currentIdx];
 
-            if (q.type === 'v2') {
+            if (q.type === 'v1') {
+                if (v1Selection === q.c) {
+                    score += 0.25;
+                    openTile();
+                }
+            } else if (q.type === 'v2') {
                 let correctCount = 0;
                 q.items.forEach((item, i) => { if (v2Ans[i] === item.r) correctCount++; });
                 const pointsMap = [0, 0.1, 0.25, 0.5, 1.0];
